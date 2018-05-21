@@ -12,16 +12,13 @@
 package binance
 
 import (
-	"database/sql"
 	"time"
-
-	gorp "gopkg.in/gorp.v2"
 )
 
 //"errors"
 
 // DBI string for logging verbose HTTP headers/response
-var dbmap gorp.DbMap
+var DBIuri string
 var verboseLogging bool
 
 const (
@@ -53,25 +50,18 @@ func handleErr(r jsonResponse) error {
     return nil
 }
 */
+
 func New(key, secret, dbi string) *Binance {
 	client := NewClient(key, secret)
 
 	// DB logging enabled? Connect to the specified DBI source
 	if dbi != "" {
 
-		db, err := sql.Open("mymysql", dbi)
-
-		// DB error? Panic
-		if err != nil {
-			panic(err)
-		}
-
-		// Connect to the DB and provision the DB table if missing
-		dbmap = gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
-		dbmap.AddTableWithName(HTTPLog{}, "HTTPLog").SetKeys(true, "ID")
+		DBIuri = dbi
 
 		// Log all requests
 		verboseLogging = true
+
 	}
 
 	return &Binance{client}

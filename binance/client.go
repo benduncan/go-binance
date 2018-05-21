@@ -8,6 +8,7 @@ import (
 	"bytes"
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
@@ -18,6 +19,7 @@ import (
 	"time"
 
 	_ "github.com/ziutek/mymysql/godrv"
+	gorp "gopkg.in/gorp.v2"
 
 	_ "github.com/ziutek/mymysql/native" // Native engine
 )
@@ -92,23 +94,6 @@ func (c *Client) do(method, resource, payload string, auth bool, result interfac
 		req.URL.RawQuery = q.Encode() + "&signature=" + signature
 	}
 
-	// Log the request via the specified DBI, use as an audit trail
-	if verboseLogging == true {
-		rawLog.QueryURL = req.URL.String()
-		rawLog.QueryDate = time.Now()
-
-		rawLog.QueryHeaders, _ = httputil.DumpRequest(req, false)
-		//[]byte(formatRequest(req))
-
-		err = dbmap.Insert(&rawLog)
-
-		if err != nil {
-			return
-		}
-
-	}
-
-	//fmt.Println("Request =>", req)
 	resp, err = c.httpClient.Do(req)
 
 	if err != nil {
@@ -117,6 +102,23 @@ func (c *Client) do(method, resource, payload string, auth bool, result interfac
 
 	// Response success? Log it
 	if verboseLogging == true {
+
+		db, err := sql.Open("mymysql", DBIuri)
+
+		// DB error? Panic
+		if err != nil {
+			panic(err)
+		}
+
+		// Connect to the DB and provision the DB table if missing
+		dbmap := gorp.DbMap{Db: db, Dialect: gorp.MySQLDialect{"InnoDB", "UTF8"}}
+		dbmap.AddTableWithName(HTTPLog{}, "HTTPLog").SetKeys(true, "ID")
+
+		rawLog.QueryURL = req.URL.String()
+		rawLog.QueryDate = time.Now()
+
+		rawLog.QueryHeaders, _ = httputil.DumpRequest(req, false)
+
 		rawLog.ResponseCode = resp.StatusCode
 
 		// Duplicate the body content, since ioutil.ReadAll is one-time only, and we need to replace it for the json decoder to function
@@ -135,8 +137,28 @@ func (c *Client) do(method, resource, payload string, auth bool, result interfac
 		// Log the response time
 		rawLog.ResponseDate = time.Now()
 
-		// Update the log to reflect the body
-		dbmap.Update(&rawLog)
+		err2 := dbmap.Insert(&rawLog)
+
+		if err2 != nil {
+			fmt.Println("Error inserting into DB =>", err2)
+		}
+
+		defer dbmap.Db.Close()
+
+		/*
+			// File audit trail
+			f, err := os.OpenFile("/tmp/binance-audit.log", os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+			if err != nil {
+
+			}
+			defer f.Close()
+
+			log.SetOutput(f)
+			log.Println(rawLog.QueryHeaders)
+			log.Println("==========")
+			log.Println(bodyBytes)
+		*/
+
 	}
 
 	// Check for error

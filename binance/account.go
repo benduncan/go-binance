@@ -8,6 +8,8 @@ package binance
 
 import (
 	"fmt"
+	"strconv"
+	"time"
 )
 
 // Get Basic Account Information
@@ -80,6 +82,45 @@ func (b *Binance) PlaceMarketOrder(m MarketOrder) (res PlacedOrder, err error) {
 	if err != nil {
 		return
 	}
+
+	return
+}
+
+// Place a TEST Market Order
+func (b *Binance) PlaceTestMarketOrder(m TestMarketOrder) (res PlacedOrder, err error) {
+
+	err = m.ValidateMarketOrder()
+	if err != nil {
+		return
+	}
+
+	// Return the FULL order-response by default, required to retrieve the price bought at.
+	reqUrl := fmt.Sprintf("api/v3/order/test?symbol=%s&side=%s&type=%s&quantity=%f&recvWindow=%d&newOrderRespType=FULL", m.Symbol, m.Side, m.Type, m.Quantity, m.RecvWindow)
+
+	_, err = b.client.do("POST", reqUrl, "", true, &res)
+	if err != nil {
+		return
+	}
+
+	// Return "TEST" data to simulate a transaction
+	/*
+		{"symbol":"NANOBTC","orderId":21420869,"clientOrderId":"QmntW66WkDLDw6yUUuqPHb","price":"0.00000000","origQty":"2.00000000","executedQty":"2.00000000","status":"FILLED","timeInForce":"GTC","type":"MARKET","side":"BUY","stopPrice":"0.00000000","icebergQty":"0.00000000","time":1526886603112,"isWorking":true}
+	*/
+
+	res.ClientOrderId = "test" + strconv.FormatInt(time.Now().Unix(), 10)
+	res.Symbol = m.Symbol
+	res.TransactTime = time.Now().Unix()
+	res.OrderId = time.Now().Unix()
+
+	// Return the "expected" data for the test transaction
+	res.Fills = make([]PlacedOrderFills, 1)
+
+	// Market price, generally differs from the quoted ticker, reflect to simulate a "real" transaction
+	res.Fills[0].Price = strconv.FormatFloat(m.Price*1.025, 'f', 10, 64)
+	res.Fills[0].Qty = strconv.FormatFloat(m.Quantity, 'f', 10, 64)
+	res.Fills[0].Commission = strconv.FormatFloat(m.Price*0.005, 'f', 10, 64)
+	res.Fills[0].CommissionAsset = "BNB"
+	res.Fills[0].TradeId = time.Now().Unix()
 
 	return
 }
