@@ -73,7 +73,8 @@ func (b *Binance) PlaceMarketOrder(m MarketOrder) (res PlacedOrder, err error) {
 		return
 	}
 
-	reqUrl := fmt.Sprintf("api/v3/order?symbol=%s&side=%s&type=%s&quantity=%f&recvWindow=%d", m.Symbol, m.Side, m.Type, m.Quantity, m.RecvWindow)
+	// Return the FULL order-response by default, required to retrieve the price bought at.
+	reqUrl := fmt.Sprintf("api/v3/order?symbol=%s&side=%s&type=%s&quantity=%f&recvWindow=%d&newOrderRespType=FULL", m.Symbol, m.Side, m.Type, m.Quantity, m.RecvWindow)
 
 	_, err = b.client.do("POST", reqUrl, "", true, &res)
 	if err != nil {
@@ -179,20 +180,20 @@ func (b *Binance) GetTrades(symbol string) (trades []Trade, err error) {
 
 func (b *Binance) GetTradesFromOrder(symbol string, id int64) (matchingTrades []Trade, err error) {
 
-    reqUrl := fmt.Sprintf("api/v3/myTrades?symbol=%s", symbol)
+	reqUrl := fmt.Sprintf("api/v3/myTrades?symbol=%s", symbol)
 
-    var trades []Trade
-    _, err = b.client.do("GET", reqUrl, "", true, &trades)
-    if err != nil {
-        return
-    }
+	var trades []Trade
+	_, err = b.client.do("GET", reqUrl, "", true, &trades)
+	if err != nil {
+		return
+	}
 
-    for _, t := range trades {
-        if t.OrderId == id {
-            matchingTrades = append(matchingTrades, t)
-        }
-    }
-    return
+	for _, t := range trades {
+		if t.OrderId == id {
+			matchingTrades = append(matchingTrades, t)
+		}
+	}
+	return
 }
 
 //

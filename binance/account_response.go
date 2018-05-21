@@ -26,11 +26,24 @@ type Balance struct {
 
 // Result from: POST /api/v3/order
 type PlacedOrder struct {
-	Symbol        string `json:"symbol"`
-	OrderId       int64  `json:"orderId"`
-	ClientOrderId string `json:"clientOrderId"`
-	TransactTime  int64  `json:"transactTime"`
+	Symbol        string             `json:"symbol"`
+	OrderId       int64              `json:"orderId"`
+	ClientOrderId string             `json:"clientOrderId"`
+	TransactTime  int64              `json:"transactTime"`
+	Fills         []PlacedOrderFills `json:"fills"`
 }
+
+type PlacedOrderFills struct {
+	Price           string `json:"price"`
+	Qty             string `json:"qty"`
+	Commission      string `json:"commission"`
+	CommissionAsset string `json:"commissionAsset"`
+	TradeId         int64  `json:"tradeId"`
+}
+
+/*
+{'symbol': 'OMGBTC', 'orderId': 15101546, 'clientOrderId': '6XQ13hOaFsW0TGmL21U2Fr', 'transactTime': 1520993978096, 'price': '0.00000000', 'origQty': '0.25000000', 'executedQty': '0.25000000', 'status': 'FILLED', 'timeInForce': 'GTC', 'type': 'MARKET', 'side': 'BUY', 'fills': [{'price': '0.00147900', 'qty': '0.25000000', 'commission': '0.00016811', 'commissionAsset': 'BNB', 'tradeId': 3720105}]}
+*/
 
 // Result from: DELETE /api/v3/order
 type CanceledOrder struct {
@@ -60,7 +73,7 @@ type OrderStatus struct {
 // Result from: GET /api/v3/myTrades
 type Trade struct {
 	Id              int64   `json:"id"`
-    OrderId         int64   `json:"orderId"`
+	OrderId         int64   `json:"orderId"`
 	Price           float64 `json:"price,string"`
 	Quantity        float64 `json:"qty,string"`
 	Commission      float64 `json:"commission,string"`
