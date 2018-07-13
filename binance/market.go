@@ -8,6 +8,7 @@ package binance
 
 import (
 	"fmt"
+	"time"
 )
 
 // Get order book
@@ -74,7 +75,19 @@ func (b *Binance) Get24Hr(q SymbolQuery) (changeStats ChangeStats, err error) {
 func (b *Binance) GetAllPrices() (prices []TickerPrice, err error) {
 
 	reqUrl := "api/v1/ticker/allPrices"
+
 	_, err = b.client.do("GET", reqUrl, "", false, &prices)
+
+	// retry loop in case of errors or empty result
+	for retries := 0; retries < 60; retries++ {
+		if err == nil && prices != nil {
+			break
+		}
+
+		_, err = b.client.do("GET", reqUrl, "", false, &prices)
+
+		time.Sleep(60 * time.Second)
+	}
 
 	return
 }
