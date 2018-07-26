@@ -8,7 +8,6 @@ package binance
 
 import (
 	"fmt"
-	"time"
 )
 
 // Get order book
@@ -79,20 +78,48 @@ func (b *Binance) GetAllPrices() (prices []TickerPrice, err error) {
 	_, err = b.client.do("GET", reqUrl, "", false, &prices)
 
 	// retry loop in case of errors or empty result
-	for retries := 0; retries < 60; retries++ {
-		if err == nil && prices != nil {
-			break
-		}
+	/*
+		for retries := 0; retries < 60; retries++ {
+			if err == nil && prices != nil {
+				break
+			}
+			time.Sleep(60 * time.Second)
+	*/
 
-		_, err = b.client.do("GET", reqUrl, "", false, &prices)
-
-		time.Sleep(60 * time.Second)
-	}
+	_, err = b.client.do("GET", reqUrl, "", false, &prices)
 
 	return
 }
 
-// Latest price for an individual symbol
+// Get an invidivual symbol price
+func (b *Binance) GetSymbolPrice(q SymbolQuery) (prices TickerPrice, err error) {
+
+	err = q.ValidateSymbolQuery()
+	if err != nil {
+		return
+	}
+
+	// Query for an individual symbol
+	reqUrl := fmt.Sprintf("api/v3/ticker/price?symbol=%s", q.Symbol)
+
+	_, err = b.client.do("GET", reqUrl, "", false, &prices)
+
+	// retry loop in case of errors or empty result
+	// TODO: Catch HTTP Status (e.g throttle limits from Binance, occassional empty data, etc to re-try and queue)
+	/*
+		for retries := 0; retries < 60; retries++ {
+			if err == nil && prices != nil {
+				break
+			}
+			time.Sleep(60 * time.Second)
+	*/
+
+	_, err = b.client.do("GET", reqUrl, "", false, &prices)
+
+	return
+}
+
+// Latest price for an individual symbol (LEGACY: fetches all and filters ...)
 func (b *Binance) GetLastPrice(q SymbolQuery) (price TickerPrice, err error) {
 
 	err = q.ValidateSymbolQuery()
