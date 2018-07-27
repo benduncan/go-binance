@@ -114,8 +114,6 @@ func (b *Binance) GetSymbolPrice(q SymbolQuery) (prices TickerPrice, err error) 
 			time.Sleep(60 * time.Second)
 	*/
 
-	_, err = b.client.do("GET", reqUrl, "", false, &prices)
-
 	return
 }
 

@@ -21,9 +21,7 @@ import (
 var DBIuri string
 var verboseLogging bool
 
-const (
-	BaseUrl = "https://api.binance.com"
-)
+var BaseUrl string
 
 type Binance struct {
 	client *Client
@@ -64,5 +62,17 @@ func New(key, secret, dbi string) *Binance {
 
 	}
 
+	// Set the default end-point
+	SetAPIDomain("https://api.binance.com")
+
 	return &Binance{client}
+}
+
+// Set the API end-point (allow to set a path for debug use)
+func SetAPIDomain(url string) {
+
+	BaseUrl = url
+
+	return
+
 }
