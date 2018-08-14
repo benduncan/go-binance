@@ -67,6 +67,86 @@ func (b *Binance) PlaceLimitOrder(l LimitOrder) (res PlacedOrder, err error) {
 	return
 }
 
+// Place a TEST Limit Order
+func (b *Binance) PlaceTestLimitOrder(l LimitOrder) (res PlacedOrder, err error) {
+
+	err = l.ValidateLimitOrder()
+	if err != nil {
+		return
+	}
+
+	reqUrl := fmt.Sprintf("api/v3/order/test?symbol=%s&side=%s&type=%s&timeInForce=%s&quantity=%f&price=%.8f&recvWindow=%d", l.Symbol, l.Side, l.Type, l.TimeInForce, l.Quantity, l.Price, l.RecvWindow)
+
+	_, err = b.client.do("POST", reqUrl, "", true, &res)
+	if err != nil {
+		return
+	}
+
+	// Query until the order is fulfilled
+	maxTries := 300
+	i := 0
+
+	var query OrderQuery
+	query.OrderId = res.OrderId
+	query.Symbol = res.Symbol
+
+	for {
+
+		// Delete the order
+		if i == maxTries {
+
+			_, err3 := b.CancelOrder(query)
+
+			if err3 != nil {
+				return res, err3
+			}
+
+			// TODO: Call to delete the order on Binance
+			return res, fmt.Errorf("Timeout fulfilling %s (%d attempts)", res.Symbol, i)
+		}
+
+		order, err2 := b.CheckOrder(query)
+
+		// Return if an error is received from querying the orderID
+		if err2 != nil {
+			return res, err2
+		}
+
+		// If the order is marked as complete, return
+		if order.Status == "FILLED" {
+			res.Fills = make([]PlacedOrderFills, 1)
+			res.Fills[0].Price = strconv.FormatFloat(order.Price, 'f', 10, 64)
+			res.Fills[0].Qty = strconv.FormatFloat(order.ExecutedQty, 'f', 10, 64)
+
+			return res, err
+		}
+
+		// Sleep, query again, until maxTries hit
+		time.Sleep(time.Second * 1)
+		i++
+
+	}
+
+	/*
+		res.ClientOrderId = "test" + strconv.FormatInt(time.Now().Unix(), 10)
+		res.Symbol = m.Symbol
+		res.TransactTime = time.Now().Unix()
+		res.OrderId = time.Now().Unix()
+
+		// Return the "expected" data for the test transaction
+		res.Fills = make([]PlacedOrderFills, 1)
+
+		// Market price, generally differs from the quoted ticker, reflect to simulate a "real" transaction
+		res.Fills[0].Price = strconv.FormatFloat(m.Price*1.025, 'f', 10, 64)
+		res.Fills[0].Qty = strconv.FormatFloat(m.Quantity, 'f', 10, 64)
+		res.Fills[0].Commission = strconv.FormatFloat(m.Price*0.005, 'f', 10, 64)
+		res.Fills[0].CommissionAsset = "BNB"
+		res.Fills[0].TradeId = time.Now().Unix()
+	*/
+
+	return
+}
+
 // Place a Market Order
 func (b *Binance) PlaceMarketOrder(m MarketOrder) (res PlacedOrder, err error) {
 
