@@ -64,6 +64,51 @@ func (b *Binance) PlaceLimitOrder(l LimitOrder) (res PlacedOrder, err error) {
 		return
 	}
 
+	// Query until the order is fulfilled
+	maxTries := 300
+	i := 0
+
+	var query OrderQuery
+	query.OrderId = res.OrderId
+	query.Symbol = res.Symbol
+
+	for {
+
+		// Delete the order
+		if i == maxTries {
+
+			_, err3 := b.CancelOrder(query)
+
+			if err3 != nil {
+				return res, err3
+			}
+
+			// TODO: Call to delete the order on Binance
+			return res, fmt.Errorf("Timeout fulfilling %s (%d attempts)", res.Symbol, i)
+		}
+
+		order, err2 := b.CheckOrder(query)
+
+		// Return if an error is received from querying the orderID
+		if err2 != nil {
+			return res, err2
+		}
+
+		// If the order is marked as complete, return
+		if order.Status == "FILLED" {
+			res.Fills = make([]PlacedOrderFills, 1)
+			res.Fills[0].Price = strconv.FormatFloat(order.Price, 'f', 10, 64)
+			res.Fills[0].Qty = strconv.FormatFloat(order.ExecutedQty, 'f', 10, 64)
+
+			return res, err
+		}
+
+		// Sleep, query again, until maxTries hit
+		time.Sleep(time.Second * 1)
+		i++
+
+	}
+
 	return
 }
 
